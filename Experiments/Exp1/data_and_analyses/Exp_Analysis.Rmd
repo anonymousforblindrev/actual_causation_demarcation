@@ -1,0 +1,531 @@
+---
+title: "Analysis"
+output:  
+  html_document:
+    number_sections: true
+    toc: true  
+    collapsed: false
+    toc_float: true
+    smooth_scroll: false
+    toc_depth: 3
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(warning = FALSE, message = FALSE) 
+# packages
+library(ez)
+library(reshape2)
+library(reshape)
+library(ggplot2)
+library(plyr)
+library(pastecs)
+library(ez)
+library(data.table)
+library(tidyverse) 
+
+library(showtext)
+library(readr)
+
+
+font_add_google("Poppins", "Poppins")
+font_add_google("Roboto Mono", "Roboto Mono")
+showtext_auto()
+```
+
+
+```{r}
+tdata <- read_csv("exp_data.csv")
+```
+
+
+```{r}
+# Exclude subjects who failed the control questions 
+tdata <- subset(tdata, confirmations_correct == "correct")
+tdata <- subset(tdata, intro_check_correct == "correct")
+tdata <- subset(tdata, learning_check_correct == "correct")
+tdata <- subset(tdata, learn_check_structure_correct == "correct")
+tdata <- subset(tdata, timing_check_correct == "correct")
+```
+
+
+```{r}
+table(tdata$structure, tdata$first_object)
+```
+
+# Subject demographics
+
+```{r}
+# demographics 
+
+min(tdata$age)
+max(tdata$age)
+mean(tdata$age)
+sd(tdata$age)
+
+# 1 = male, 2 = female, 3 = other
+table(tdata$gender)
+```
+
+1 = male, 2 = female, 3 = non-binary, 4 = prefer not to say
+
+
+# Data preparations 
+
+
+Factorize:
+
+```{r}
+tdata$structure <- factor(tdata$structure, levels = c("stable", "unstable"), labels = c("one-shot", "demarcation"))
+```
+
+Relabel rating columns for red and yellow entity according to "first object" (so that they are called first_obj_rating and second_obj_rating):
+
+```{r}
+left_first <- subset(tdata, first_object == "left")
+colnames(left_first)[11] ="first_obj_caused_rating"
+colnames(left_first)[12] ="second_obj_caused_rating"
+colnames(left_first)[13] ="first_obj_sustained_rating"
+colnames(left_first)[14] ="second_obj_sustained_rating"
+
+right_first <- subset(tdata, first_object == "right")
+colnames(right_first)[12] ="first_obj_caused_rating"
+colnames(right_first)[11] ="second_obj_caused_rating"
+colnames(right_first)[14] ="first_obj_sustained_rating"
+colnames(right_first)[13] ="second_obj_sustained_rating"
+
+right_first <- right_first[c("subj_code", "condition", "desktop_conf", "attent_conf", "intro_check", 
+                             "structure", "first_object", "learn_check_left", "learn_check_right", "learn_check_structure",
+                             "first_obj_caused_rating", "second_obj_caused_rating", "first_obj_sustained_rating", "second_obj_sustained_rating",
+                             "timing_check", "recorded_at", 
+                             "age", "gender", "tech_issues", 
+                             "confirmations_correct", "intro_check_correct",
+                             "learning_check_left_correct", "learning_check_right_correct", "learning_check_correct",
+                             "learn_check_structure_correct", "timing_check_correct")]
+
+
+names(left_first) %in% names(right_first)
+
+tdata <- rbind(left_first, right_first)
+```
+
+Make a subset containing only the columns relevant for analyses and turn into long format:
+
+```{r}
+# Subset: 
+tdata_sub <- subset(tdata, select = c("subj_code","structure","first_obj_caused_rating", "second_obj_caused_rating",
+                                      "first_obj_sustained_rating", "second_obj_sustained_rating"))
+
+# into long format:
+library(tidyr)
+tdata_long <- gather(tdata_sub, entity, rating, 3:6)
+
+
+# factorize entity 
+tdata_long$entity <- factor(tdata_long$entity, levels = c("first_obj_caused_rating", "second_obj_caused_rating", 
+                                                          "first_obj_sustained_rating", "second_obj_sustained_rating"), 
+                            labels = c("first \ntriggered", "second \ntriggered","first \nsustained", "second \nsustained"))
+```
+
+
+
+# Graphs and summaries
+
+
+```{r}
+myTheme <- theme(plot.title = element_text(face="bold", size = 22),
+        axis.title.x = element_text(size = 20),
+        axis.title.y = element_text(size = 20),
+        axis.text.x = element_text(size = 14, angle = 0), 
+        axis.text.y = element_text(size = 16, angle = 0),
+        legend.text = element_text(size = 18),
+        legend.title = element_text(face = "bold", size = 18),
+        strip.text.x = element_text(size = 18),
+        panel.grid.major = element_blank(), 
+        panel.grid.minor = element_blank(), 
+        panel.background = element_blank(), 
+        axis.line.x = element_line(colour = "black"), 
+        axis.line.y = element_line(colour = "black"),
+        axis.text = element_text(colour ="black"), 
+        axis.ticks = element_line(colour ="black"))
+
+
+tdata_sub <- tdata_long
+
+
+library(see)
+## first, turn sID into a factor
+tdata_sub$subj_code <- factor(tdata_sub$subj_code)
+
+pd <- position_dodge(width = 0.3)
+
+tdata_sub$valueJitter <- jitter(tdata_sub$rating, factor = 0.01, amount = 0.004)
+
+theme_set(theme_light(base_size = 20, base_family = "Poppins"))
+
+
+g <- ggplot(tdata_sub, aes(x = entity, y = valueJitter)) +
+  guides(fill=FALSE)+
+  facet_grid( ~ structure)+
+  scale_y_continuous(limits = c(-0.3, 10.3), breaks=seq(0, 10, 1), expand = c(0,0)) +
+  geom_jitter(aes(color = structure), alpha = 0.5, width = 0.15, height = 0.2) +
+  stat_summary(aes(y = rating, group=1), fun.data = mean_cl_boot, 
+               geom = "errorbar", width = 0, size = 1) +
+  stat_summary(aes(y = rating, group=1, color = structure), fun.y=mean, geom="line", 
+               shape = 22, size = 1.5, alpha = .7)+
+  stat_summary(aes(y = rating, group=1, fill = structure), fun.y=mean, geom="point", 
+               color = "black", shape = 22, size = 3, group=1, alpha = 1)+
+  stat_summary(aes(y = rating,group=1), fun.y=median, geom="point", color = "black", shape = 3, size = 4, 
+               group=1, alpha = 1, position = position_dodge(width = 0.5))+
+  labs(x = "Causal Statement", y = "Agreement Rating") +
+  scale_color_manual(name = "Strength",values=c("#66c2a5", "#e78ac3", "#8da0cb", "#a6d854"))+
+  scale_fill_manual(name = "Strength",values=c("#66c2a5", "#e78ac3", "#8da0cb", "#a6d854"))+
+  theme(legend.position = "none")+
+  myTheme+
+  theme(panel.grid.major = element_line(color = "lightgrey",
+                                        size = 0.5,
+                                        linetype = 'dotted'))+
+  stat_summary(aes(label=round(after_stat(y),2)), fun.y=mean, geom="text", size=4,
+             vjust = 0, hjust = -0.5)+
+  annotate("text", x = 0.5, y = 2.2, label = c("completely inadequate"), angle = 90)+
+  annotate("text", x = 0.5, y = 8.0, label = c("completely adequate"), angle = 90)
+
+g
+
+ggsave("results_means_mainDV.svg",width=12,height=5)
+ggsave("results_means_mainDV.pdf",width=12,height=5)
+
+```
+Extract from the plot a list of the means and their 95% CIs: 
+
+```{r}
+# Build the ggplot object
+gb <- ggplot_build(g)
+
+# Extract the data from the stat_summary layer
+ci_data <- gb$data[[2]] # stat_summary is the 2nd layer
+
+# Extract the lower and upper CI boundaries
+lower_ci <- ci_data$ymin
+upper_ci <- ci_data$ymax
+
+# Extract the means
+means <- ci_data$y
+
+# Combine into a data frame (optional)
+ci_df <- data.frame(
+  group = ci_data$x,
+  mean = means,
+  lower_ci = lower_ci,
+  upper_ci = upper_ci
+)
+
+# Print the data frame
+print(ci_df)
+```
+
+
+
+```{r}
+library(ggridges)
+g2 <- ggplot(tdata_long, aes(x = rating, y = entity, fill = structure)) +
+  facet_grid( ~ structure)+
+  scale_x_continuous(breaks = seq(0, 10, 1))+
+  geom_density_ridges(alpha = 0.5)+
+   #stat_summary(aes(x = rating_rec), fun.x=mean, geom="point", 
+  #             color = "black", shape = 22, size = 2, group=1, alpha = 1)+
+  scale_fill_manual(values=c("#66c2a5", "#e78ac3", "#8da0cb", "#a6d854"))+
+  #scale_fill_viridis_c(name = "Explanation \nRating", option = "C", breaks=c(-5,0,5), labels=c("narrow scope", "no preference", "broad scope"))+
+  labs(x = "Agreement Rating", y = "Causal Statement") +
+  scale_y_discrete(limits=rev)+
+  myTheme+
+  theme_light(base_family = "Poppins", base_size = 20)+
+  theme(panel.grid = element_blank(), axis.text = element_text(colour ="black"))+
+  theme(legend.position="none",
+        legend.title=element_blank(),legend.key.width = unit(1.95, 'cm'))+
+  theme(axis.text.y = element_text(size = 14, angle = 0))+
+  annotate("text", y = 0.7, x = 0, label = c("completely inadequate"), angle = 0)+
+  annotate("text", y = 0.7, x = 10, label = c("completely adequate"), angle = 0)
+
+g2
+
+ggsave("results_dist.svg",width=12,height=5)
+ggsave("results_dist.pdf",width=12,height=5)
+```
+```{r}
+library("ggpubr")
+
+ggarrange(
+  g, g2, labels = c("A", "B"),
+  common.legend = TRUE, legend = "none", 
+  font.label = list(size = 16, color = "black", family = "Arial", face = "bold"), 
+  nrow = 2,
+  ncol = 1
+  ) -> c_plot
+
+c_plot
+
+ggsave("res_squids_01.svg",width=11,height=12)
+ggsave("res_squids_01.pdf",width=11,height=12)
+```
+
+
+
+# Analyses
+
+## Mixed ANOVA 
+
+```{r}
+library(afex)
+library(emmeans)
+
+a1 <- aov_car(rating ~ structure*entity + Error(subj_code/entity), tdata_long, anova_table = list(es = "pes"))
+a1
+
+```
+Predicted interaction effect was significant-
+
+
+Visualize also the obtained main effect of "structure" (reversibility)
+
+```{r}
+tdata_sub <- tdata_long
+
+
+library(see)
+## first, turn sID into a factor
+tdata_sub$subj_code <- factor(tdata_sub$subj_code)
+
+pd <- position_dodge(width = 0.3)
+
+tdata_sub$valueJitter <- jitter(tdata_sub$rating, factor = 0.01, amount = 0.004)
+
+theme_set(theme_light(base_size = 20, base_family = "Poppins"))
+
+
+g <- ggplot(tdata_sub, aes(x = structure, y = valueJitter)) +
+  guides(fill=FALSE)+
+
+  scale_y_continuous(limits = c(-0.3, 10.3), breaks=seq(0, 10, 1), expand = c(0,0)) +
+  geom_jitter(aes(color = structure), alpha = 0.5, width = 0.15, height = 0.2) +
+  stat_summary(aes(y = rating, group=1), fun.data = mean_cl_boot, 
+               geom = "errorbar", width = 0, size = 1) +
+  stat_summary(aes(y = rating, group=1, fill = structure), fun.y=mean, geom="point", 
+               color = "black", shape = 22, size = 3, group=1, alpha = 1)+
+  stat_summary(aes(y = rating,group=1), fun.y=median, geom="point", color = "black", shape = 3, size = 4, 
+               group=1, alpha = 1, position = position_dodge(width = 0.5))+
+  labs(x = "Nature of the effect", y = "Agreement Rating") +
+  scale_color_manual(name = "Strength",values=c("#66c2a5", "#e78ac3", "#8da0cb", "#a6d854"))+
+  scale_fill_manual(name = "Strength",values=c("#66c2a5", "#e78ac3", "#8da0cb", "#a6d854"))+
+  theme(legend.position = "none")+
+  myTheme+
+  theme(panel.grid.major = element_line(color = "lightgrey",
+                                        size = 0.5,
+                                        linetype = 'dotted'))+
+  stat_summary(aes(label=round(after_stat(y),2)), fun.y=mean, geom="text", size=5,
+             vjust = -6)+
+  annotate("text", x = 0.5, y = 2, label = c("completely disagree"), angle = 90)+
+  annotate("text", x = 0.5, y = 8.2, label = c("completely agree"), angle = 90)
+
+g
+
+```
+
+Plot main effect of entity (causal statement):
+
+```{r}
+
+tdata_sub <- tdata_long
+
+
+library(see)
+## first, turn sID into a factor
+tdata_sub$subj_code <- factor(tdata_sub$subj_code)
+
+pd <- position_dodge(width = 0.3)
+
+tdata_sub$valueJitter <- jitter(tdata_sub$rating, factor = 0.01, amount = 0.004)
+
+theme_set(theme_light(base_size = 20, base_family = "Poppins"))
+
+g <- ggplot(tdata_sub, aes(x = entity, y = valueJitter)) +
+  guides(fill=FALSE)+
+  scale_y_continuous(limits = c(-0.3, 10.3), breaks=seq(0, 10, 1), expand = c(0,0)) +
+  geom_jitter(aes(color = entity), alpha = 0.5, width = 0.15, height = 0.2) +
+  stat_summary(aes(y = rating, group=1), fun.data = mean_cl_boot, 
+               geom = "errorbar", width = 0, size = 1) +
+  stat_summary(aes(y = rating, group=1, fill = entity), fun.y=mean, geom="point", 
+               color = "black", shape = 22, size = 3, group=1, alpha = 1)+
+  stat_summary(aes(y = rating,group=1), fun.y=median, geom="point", color = "black", shape = 3, size = 4, 
+               group=1, alpha = 1, position = position_dodge(width = 0.5))+
+  labs(x = "Causal Statement", y = "Agreement Rating") +
+  scale_color_manual(name = "Strength",values=c("#66c2a5", "#e78ac3", "#8da0cb", "#a6d854"))+
+  scale_fill_manual(name = "Strength",values=c("#66c2a5", "#e78ac3", "#8da0cb", "#a6d854"))+
+  theme(legend.position = "none")+
+  annotate("text", x = 0.5, y = 1.7, label = c("completely disagree"), angle = 90)+
+  annotate("text", x = 0.5, y = 6.7, label = c("completely agree"), angle = 90)+
+  myTheme+
+  theme(panel.grid.major = element_line(color = "lightgrey",
+                                        size = 0.5,
+                                        linetype = 'dotted'))+
+  stat_summary(aes(label=round(after_stat(y),2)), fun.y=mean, geom="text", size=5,
+             vjust = -6)
+
+g
+
+
+```
+
+
+## Contrasts 
+
+
+
+```{r}
+
+library(lsmeans)
+# means
+
+ls2 <- lsmeans(a1, c("structure", "entity")) 
+ls2
+
+contrasts <- emmeans(a1, ~ entity|structure)
+s <- pairs(contrasts, adjust = "none") 
+
+
+s
+confint(s, level = 0.95)
+```
+
+The planned contrasts from the list above are " first..caused - second..caused" in both "irreversible" and "reversible". Both are significant.
+
+Get effect standardized effect sizes for the contrasts
+
+First get the SDs that need to be pooled (and also the correlations between measures for the within-comparisons)
+
+```{r}
+library(dplyr)
+
+tdata_long %>%
+  group_by(structure, entity) %>%
+  summarise_at(vars(rating), list(name=sd))
+```
+
+
+```{r}
+library(dplyr)
+
+tdata_stable <- subset(tdata, structure == "one-shot")
+tdata_unstable <- subset(tdata, structure == "demarcation")
+
+tdata_stable %>%
+  group_by(structure) %>%
+  summarize(cor=cor(first_obj_caused_rating, second_obj_caused_rating))
+
+tdata_unstable %>%
+  group_by(structure) %>%
+  summarize(cor=cor(first_obj_caused_rating, second_obj_caused_rating))
+
+```
+
+```{r}
+# using the functions from the MOTE package (see https://matthewbjane.quarto.pub/guide-to-effect-sizes-and-confidence-intervals/Standardized-Mean-Differences.html#sec-repeated-measures-drm)
+
+library(MOTE)
+
+
+# stable condition
+
+# structure       entity             lsmean    SE df lower.CL upper.CL
+# stable effect   first..caused        9.84 0.224 98   9.3946    10.29
+# stable effect   second..caused       0.86 0.391 98   0.0833     1.64
+
+# sds
+#stable effect	first \ncaused	0.7384485		
+#stable effect	second \ncaused	1.9795897	
+
+#Cor
+#irreversible	-0.1470522		
+	
+
+stats <- d.dep.t.rm(
+  m1 = 9.84,
+  m2 = 0.86,
+  sd1 = 0.7384485	,
+  sd2 = 1.9795897	,
+  n = 50,
+  a = 0.05,
+  r = -0.3367331	
+)
+
+stats$estimate
+```
+
+```{r}
+# unstable condition 
+
+#structure    entity             lsmean    SE df lower.CL upper.CL
+# unstable effect first..caused        9.28 0.224 98   8.8346     9.73
+# unstable effect second..caused       2.22 0.391 98   1.4433     3.00
+
+# sds 
+# unstable effect	first \ncaused	2.1192991		
+# unstable effect	second \ncaused	3.3763282	
+
+#Cor
+#unstable	-0.06582681	
+
+
+stats <- d.dep.t.rm(
+  m1 = 9.28,
+  m2 = 2.22,
+  sd1 = 2.1192991		,
+  sd2 = 3.3763282,
+  n = 50,
+  a = 0.05,
+  r = -0.06582681	
+)
+
+stats$estimate
+```
+
+
+
+The final planned contrast compares the sustainer ratings for the second cause in "irreversible" and "reversible". It must be looked up from the long list of contrasts below: 
+
+```{r}
+contrasts <- emmeans(a1, ~ entity*structure)
+s <- pairs(contrasts, adjust = "none") 
+
+
+s
+confint(s, level = 0.95)
+```
+
+The relevant contrast is: "second..sustained stable - second..sustained unstable", which is significant. 
+
+Get effect size: 
+
+```{r}
+#structure    entity             lsmean    SE df lower.CL upper.CL
+# unstable effect second..sustained   9.34 0.454 98   8.4397    10.24
+# stable effect   second..sustained   3.34 0.454 98   2.4397     4.24
+
+
+#SDs
+# unstable effect	second \nsustained	2.0564483	
+# stable effect	second \nsustained	4.0436900
+
+
+stats <- d.ind.t(
+  m1 = 9.34,
+  m2 = 3.34,
+  sd1 = 2.0564483	,
+  sd2 = 4.0436900,
+  n1 = 50,
+  n2 = 50,
+  a = 0.05
+)
+
+stats$estimate
+```
+

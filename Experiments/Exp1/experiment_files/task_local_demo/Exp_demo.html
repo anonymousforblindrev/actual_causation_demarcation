@@ -1,0 +1,584 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Demo Exp</title>
+    <script src="jspsych/jspsych.js"></script>
+    <script src="jspsych/plugin-html-button-response.js"></script>
+    <script src="jspsych/plugin-survey-multi-choice.js"></script>
+    <script src="jspsych/plugin-survey-likert.js"></script>
+    <script src="jspsych/plugin-html-slider-response.js"></script>
+	<script src="jspsych/plugin-image-keyboard-response.js"></script>
+	<script src="jspsych/plugin-html-keyboard-response.js"></script>
+    <script src="jspsych/plugin-preload.js"></script>
+    <script src="jspsych/plugin-survey-text.js"></script>
+    <script src="jspsych/plugin-fullscreen.js"></script>
+    <link href="jspsych/jspsych.css" rel="stylesheet" type="text/css" />
+  </head>
+  <body></body>
+  <script>
+  
+// run study with ?demo=true at the end of url to have the demo mode
+
+
+var jsPsych = initJsPsych({
+  experiment_width: 1100,
+  on_finish: function(){
+    window.location = "https://app.prolific.com/submissions/complete?cc=C9PH2UW4"
+  }
+});
+
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+var demo_mode = true; // in demo mode, answers to questions are not required and instruction test is always passed
+
+function answ_req() {
+   var ans_required; 
+   if(demo_mode == true){
+    ans_required = false
+   }
+   else{ans_required = true}
+   return ans_required;
+}
+
+var answ_required = answ_req();
+
+console.log("demo mode = "+demo_mode, ", answers required: "+answ_required);
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+//var condition = CONDITION; 
+var condition;
+
+jsPsych.data.addProperties({condition: +condition});
+
+var subj_code;
+
+function makeid(length) {
+    var result           = '';
+    var characters       = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+    var charactersLength = characters.length;
+    for ( var i = 0; i < length; i++ ) {
+      result += characters.charAt(Math.floor(Math.random() * 
+ charactersLength));
+   }
+   return result;
+}
+
+subj_code = makeid(12);
+
+console.log(subj_code);
+
+jsPsych.data.addProperties({subj_code: subj_code});
+
+
+
+/* create timeline */
+var timeline = [];
+
+/* preload images */
+var preload = {
+  type: jsPsychPreload,
+  images: ['img/uni_org_color_li.png']
+}
+timeline.push(preload);
+
+var styles = `
+  p {
+    text-align: justify
+  }
+  
+`
+var styleSheet = document.createElement("style")
+styleSheet.type = "text/css"
+styleSheet.innerText = styles
+document.head.appendChild(styleSheet)
+
+
+//////////////////////// images in the different conditions
+
+
+
+var test_left = ["test_left.html"]; 
+var test_right = ["test_right.html"]; 
+
+
+
+var learn_clip_left;
+var learn_clip_right;
+
+console.log(condition)
+
+
+
+var illu_pic = "squid_illu.png";
+
+
+
+///// Animation links for the online version of the experiment 
+
+//<iframe src="https://simonstephan31.github.io/stimulus_repository/images/stable_vs_unstable/01/demo_clip.html" width="1100" height="700" title="demo"></iframe>
+//<iframe src="https://simonstephan31.github.io/stimulus_repository/images/reversible_vs_irreversible/02b/`+learn_clip_right+`" width="1100" height="700" title="learn clip"></iframe>
+//<iframe src="https://simonstephan31.github.io/stimulus_repository/images/reversible_vs_irreversible/02b/`+learn_clip_left+`" width="1100" height="700" title="learn clip"></iframe>
+//<iframe src="https://simonstephan31.github.io/stimulus_repository/images/stable_vs_unstable/01/`+test_clip+`" width="1100" height="700" title="test"></iframe>
+
+
+//////////////////////////////////////////////////////
+/* Condition selection (just for offline demo) */
+
+var select = {
+  type: jsPsychSurveyText,
+  questions: [
+    {
+		prompt: 
+		`
+		<p><b>Select a condition: type in a number between 1 and 4.</b></p>
+    <p>
+      - 1 and 2: stable effect structure (1 = first cause is the left cause; 2 = first cause is the right cause)<br>
+      - 3 and 4: unstable effect structure (3 = first cause is the left cause; 4 = first cause is the right cause)
+    </p>
+		`, 
+		placeholder: 'number between 1 and 4',
+		required: true,
+		name: 'CondSel',
+	},
+  ],
+	on_finish: function(data){
+	condition = data.response.CondSel,
+	console.log(condition);
+	} 
+}
+timeline.push(select);
+
+
+
+//////////////////////////////////////////////////////
+/* Instructions ( all conditions)  */
+var cond_selected = {
+    type: jsPsychHtmlButtonResponse,
+    stimulus: function () {
+    return "You chose to see Condition "+condition;
+		},
+    choices: ['Continue']
+};
+timeline.push(cond_selected);
+
+
+var enter_fullscreen = {
+  type: jsPsychFullscreen,
+  message: "<p><center><b>Please note</b>: The experiment will switch to full screen mode when you continue.</center></p>",
+  fullscreen_mode: true
+}
+
+timeline.push(enter_fullscreen);
+
+
+
+
+//////////////////////////////////////////////////////
+/* Confirmations */
+var confs = {
+  type: jsPsychSurveyMultiChoice,
+  questions: [
+    {
+      prompt: "This study works properly only on Desktop PCs and Laptops, and not on Smartphones or Tablets. Before you proceed, please confirm that you take part via Desktop PC or Laptop.", 
+      name: 'DesktopConf', 
+      options: ['1: I confirm', '2: I do not confirm'], 
+      required: answ_required
+    }, 
+    {
+      prompt: "For the scientific utility of the results, it is very important that you provide complete and careful responses. How seriously will you take your participation in the study?", 
+      name: 'AttentConf', 
+      options: ['1: I will take it seriously', '2: I will not take it seriously'], 
+      required: answ_required
+    }, 
+  ],
+  on_finish: function(data){
+      if (condition == 1) {
+        structure = "stable";
+        first_object = "left";
+        test_clip = test_left;
+        learn_clip_left = "irreversible_learning_left.html";
+        learn_clip_right = "irreversible_learning_right.html";
+      } else if (condition == 2) {
+        structure = "stablet";
+        first_object = "right";
+        test_clip = test_right;
+        learn_clip_left = "irreversible_learning_left.html";
+        learn_clip_right = "irreversible_learning_right.html";
+      } else if (condition == 3) {
+        structure = "unstable";
+        first_object = "left";
+        test_clip = test_left;
+        learn_clip_left = "unstable_learning_left.html";
+        learn_clip_right = "unstable_learning_right.html";
+      } else if (condition == 4) {
+        structure = "unstable";
+        first_object = "right";
+        test_clip = test_right;
+        learn_clip_left = "unstable_learning_left.html";
+        learn_clip_right = "unstable_learning_right.html";
+      };
+	    jsPsych.data.addProperties({desktop_conf: data.response.DesktopConf, attent_conf: data.response.AttentConf, intro_check: data.response.Intro_Clip, structure: structure, first_object: first_object, test_clip: test_clip});
+      console.log(structure, first_object, learn_clip_left, learn_clip_right, illu_pic);
+    },
+  preamble: `
+              <p><img src="img/uni_org_color_li.png" width = 100%></img></p>
+              <p><b>Welcome to this experiment and thank you very much for your participation.</b></p>
+              <p>Please note: This study contains memory and comprehension checks with which we aim to ensure that you correctly understood the central aspects of the study.</p>
+            `
+};
+timeline.push(confs);
+
+
+
+
+
+
+
+//////////////////////////////////////////////////////
+/* Instructions ( all conditions) */
+var welcome = {
+  type: jsPsychSurveyMultiChoice,
+  questions: [
+    {
+      prompt: 
+      `
+        <p>On the next screens, we will show you a couple of short animations. Please watch the demo animation on this screen.
+          To start the animation you, have to click on this button. 
+          Once the animation has finished, the <b><i>Start button</i></b> will appear again.
+        </p>
+        
+        <p>
+          <iframe src="img/demo_clip.html" width="1100" height="700" title="demo"></iframe>
+        </p>
+        
+        <p>Please select the option below that correctly describes what happened in the animation.</p>
+      `, 
+      name: 'Intro_Clip', 
+      options: ['1: A little squid swam from the left to the right.',
+                '2: A little squid swam from the right to the left.',
+                '3: A little squid swam from the bottom to the top.',
+                '4: A little squid swam from the top to the bottom.'], 
+      required: answ_required
+    }, 
+  ],
+  on_finish: function(data){
+	    jsPsych.data.addProperties({intro_check: data.response.Intro_Clip});
+    },
+};
+timeline.push(welcome);
+
+
+
+/////////////////////////////////////////////////////////
+/* Instructions medicines (all conditions) */
+var instruction = {
+    type: jsPsychHtmlButtonResponse,
+    stimulus: function() {return `
+    <p>
+      <i>Please read the following fictitious scenario:</i>
+    </p>
+    <p>
+      Biologists have discovered a new species of squid. 
+      Females are large and males are small. Only females can change their color; they can turn purple. Illustrations are shown below.
+    </p>
+      
+    <p><img src="img/`+illu_pic+`" width = 100%></img></p>
+
+    <p>
+      What causes a female to turn purple? A female squid turns purple if a male comes close to her.
+    </p>
+    <p>
+      On the next screens, we will show you some animations allowing you to learn more about how male squids cause females to turn purple.
+    </p>
+    <p>
+      <i>Please note</i>: You can watch all clips as often as you like, and we're always interested in your intuitive understanding.
+    </p>
+    <p>
+      <i>If you feel ready to start, please click "Continue" to proceed.</i>
+    </p>
+    <br>
+    `
+  },
+    choices: ['Continue']
+}
+timeline.push(instruction);
+
+
+/////////////////////////////// learning clips 
+
+var learning_left = {
+  type: jsPsychSurveyMultiChoice,
+  name: 'learning_left',
+  questions: [
+    { 
+      prompt: "Please select the option below that correctly describes what happened in the animation you've just seen.",
+      options: ['1: When the left male approached the female she turned purple, but as soon as he swam away from her again, her colors faded and she became pale and grey.',
+                '2: When the left male approached the female she turned purple and when he swam away from her again, she stayed purple.'],
+      required: answ_required,
+      name: 'learn_check_left'
+    },
+  ],
+  preamble: function() {return `
+    <p><b><i>Below, you see an animation in which you can learn what it looks like when a female gets approached by a male squid and what happens to her when a male squid swims away from her again. 
+      Please watch the animation and then answer the check question below. You can watch the animation as often as you like.</i></b><p>
+        <p>
+          <iframe src="img/`+learn_clip_left+`" width="1100" height="700" title="learn clip"></iframe>
+        </p>
+    `},
+  on_finish: function(data){
+	  jsPsych.data.addProperties({learn_check_left: data.response.learn_check_left});
+  },
+};
+
+var learning_intermed = {
+    type: jsPsychHtmlButtonResponse,
+    stimulus: function() {return `
+    <p>
+      For the sake of completeness, we will show you a second animation on the next screen that illustrates the same thing as the animation you just saw, 
+      but this time it is other male squid that serves to illustrate how a female reacts when she gets approached by a male squid and what happens to her when a male squid swims away from her again.
+    </p>
+    `
+  },
+    choices: ['Continue']
+}
+
+
+var learning_right = {
+  type: jsPsychSurveyMultiChoice,
+  name: 'learning_right',
+  questions: [
+    { 
+      prompt: "Please select the option below that correctly describes what happened in the animation you've just seen.",
+      options: ['1: When the right male approached the female she turned purple, but as soon as he swam away from her again, her colors faded and she became pale and grey.',
+                '2: When the right male approached the female she turned purple and when he swam away from her again, she stayed purple.'],
+      required: answ_required,
+      name: 'learn_check_right'
+    },
+  ],
+  preamble: function() {return `
+    <p><b><i>Below, you see an animation in which you can learn what it looks like when a female gets approached by a male squid and what happens to her when a male squid swims away from her again. 
+      Please watch the animation and then answer the check question below. You can watch the animation as often as you like.</i></b><p>
+        <p>
+          <iframe src="img/`+learn_clip_right+`" width="1100" height="700" title="learn clip"></iframe>
+        </p>
+    `},
+  on_finish: function(data){
+	  jsPsych.data.addProperties({learn_check_right: data.response.learn_check_right});
+  },
+};
+
+var learn_check_order = [learning_left, learning_right];
+
+var learn_check_shuffled = jsPsych.randomization.repeat(learn_check_order, 1);
+
+timeline.push(learn_check_shuffled[0], learning_intermed, learn_check_shuffled[1]);
+
+
+
+var learning_structure = {
+  type: jsPsychSurveyMultiChoice,
+  name: 'learning_structure',
+  questions: [
+    { 
+      prompt: "Based on what you've learned from the two animations, which of the two options below correctly describes the color behavior of a female squid? ",
+      options: [`1: For a female to turn purple, a male must come close to her. She stays purple only for as long as a male squid is close to her.
+                 As soon as a male swims away again, her colors immediately fade and she becomes pale and grey.`,
+                `2: For a female to turn purple, a male must come close to her. 
+                 Once this has happened, she remains purple permanently, even if a male squid swims away from her again.`],
+      required: answ_required,
+      name: 'learn_check_structure'
+    },
+  ],
+  preamble: function() {return `
+    <p>
+      <b><i>You've now seen two animations in which you learned what happens to a female squid when she gets approached by a male squid, and what happens to her when a male squid swims away from her again.</i></b>
+    <p>
+    `},
+  on_finish: function(data){
+	  jsPsych.data.addProperties({learn_check_structure: data.response.learn_check_structure});
+  },
+};
+
+timeline.push(learning_structure);
+
+
+////////////////////////////// Instructing the Decision Situation 
+
+var instruction_test = {
+    type: jsPsychHtmlButtonResponse,
+    stimulus:[
+    `
+    <p>
+      On the next screen, we'll show you the final animation. Please make sure that you watch it thoroughly before you answer the test questions.
+    </p>
+    `],
+    choices: ['Continue']
+}
+timeline.push(instruction_test);
+
+
+
+var likert_scale_test = [
+  "Completely inadequate","" ,"" ,"" ,"" ,"", "", "", "", "","Completely adequate"
+];
+
+var test = {
+  type: jsPsychSurveyLikert,
+  questions: [
+    {prompt: "The left male turned the female purple.", name: 'left_caused', labels: likert_scale_test, required: answ_required},
+    {prompt: "The right male turned the female purple.", name: 'right_caused', labels: likert_scale_test, required: answ_required},
+    {prompt: "The left male kept the female purple.", name: 'left_maintained', labels: likert_scale_test, required: answ_required},
+    {prompt: "The right male kept the female purple.", name: 'right_maintained', labels: likert_scale_test, required: answ_required},
+  ],
+  randomize_question_order: true,
+  preamble: function() {
+    return `                 
+        <p><i><b>Please watch the animation below and then answer the questions:</b></i></p>
+
+        <p>
+          <iframe src="img/`+test_clip+`" width="1100" height="700" title="test"></iframe>
+        </p>
+
+        <p><b>How adequate is each of the following sentences to describe what happened in the clip you've just seen?</b></p>
+    `
+  },
+  on_finish: function(data){
+	  jsPsych.data.addProperties({left_caused_rating: data.response.left_caused, right_caused_rating: data.response.right_caused, 
+      left_maintained_rating: data.response.left_maintained, right_maintained_rating: data.response.right_maintained});
+  },
+};
+
+timeline.push(test);
+
+
+
+
+/////////////////////////////////////// explanation
+var explan = {
+  type: jsPsychSurveyText,
+  name: 'Free_explan',
+  questions: [
+    {prompt: `We'd now like to learn a little bit more about the judgment you just made. Please use the text field below to give a short explanation for your rating.`, 
+    rows: 10, 
+    columns: 100, 
+    required: false,
+    name: 'Explanation'
+    },
+  ],
+  on_finish: function(data){
+	  jsPsych.data.addProperties({explanation: data.response.Explanation});
+  },
+}
+//timeline.push(explan);
+
+
+
+//////////////////////////////////////////////////////
+/* Memory Checks */
+var mem_check = {
+  type: jsPsychSurveyMultiChoice,
+  questions: [
+    {
+      prompt: "In the last clip you saw, what is true about the order in which the males began to approach the female?", 
+      name: 'Timing_check', 
+      options: ['The left male swam to the female first.', 
+                'The right male swam to the female first.'], 
+      required: answ_required
+    }, 
+  ],
+  on_finish: function(data){
+	  jsPsych.data.addProperties({timing_check: data.response.Timing_check});
+  },
+  preamble: "<b>Please answer this additional question:</b>"
+};
+timeline.push(mem_check);
+
+
+
+
+/////////////////////////////////////// demographics
+var demogr_age = {
+  type: jsPsychSurveyText,
+  name: 'Age_query',
+  questions: [
+    {prompt: 'How old are you?', 
+    placeholder: 'Age as a number', 
+    required: answ_required,
+    name: 'Age'
+    },
+  ],
+  on_finish: function(data){
+	  jsPsych.data.addProperties({age: data.response.Age});
+  },
+}
+
+
+
+var demogr_gender = {
+  type: jsPsychSurveyMultiChoice,
+  name: 'gender_query',
+  questions: [
+    {
+      prompt: "Please indicate with which gender you identify.", 
+      options: ['1: male', '2: female', '3: non-binary', '4: prefer not to say'],
+      required: answ_required,
+      name: 'Gender'
+    },
+  ],
+  on_finish: function(data){
+	  jsPsych.data.addProperties({gender: data.response.Gender});
+  },
+};
+timeline.push(demogr_age, demogr_gender);
+
+
+
+
+/////////////////////////////////////// technical issues
+var tech_issues = {
+  type: jsPsychSurveyText,
+  name: 'Tech_issue_query',
+  questions: [
+    {prompt: 'In the text field below you can report any errors that you came across during the study (e.g., technical issues, layout problems, spelling errors, errors in program logic and flow, etc.).', 
+    rows: 10, 
+    columns: 100, 
+    required: false,
+    name: 'Tech_issue_report'
+    },
+  ],
+  on_finish: function(data){
+	  jsPsych.data.addProperties({tech_issues: data.response.Tech_issue_report});
+	  console.log(data.response.Tech_issue_report)
+  },
+}
+timeline.push(tech_issues);
+
+///////////////////////////////////// debriefing
+
+var debriefing = {
+  type: jsPsychHtmlButtonResponse,
+  stimulus: 
+    `
+    <img src="img/uni_org_color_li.png" width = 100%></img>
+    <p><b>Thank you for taking part in this study!</b></p>
+  
+    <p>The aim of this experiment is to find out more about how people reason about causal claims. 
+    If you are interested in further details or if you have any questions or comments concerning the experiment, 
+    feel free to contact me (Simon Stephan) under <i>sstepha1@uni-goettingen.de</i>
+    
+    <p>To ensure you receive your reward, please click the button below to return to the Prolific website:</p>
+    `
+    ,
+    choices: ['Finish study']
+};
+timeline.push(debriefing);
+
+
+
+/////////////////////////////////////////////////////////////////
+/* start the experiment */
+    jsPsych.run(timeline);
+
+  
+  </script>
+</html>
