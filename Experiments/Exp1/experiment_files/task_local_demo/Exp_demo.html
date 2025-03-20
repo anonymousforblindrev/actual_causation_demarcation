@@ -29,7 +29,7 @@ var jsPsych = initJsPsych({
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-var demo_mode = true; // in demo mode, answers to questions are not required and instruction test is always passed
+var demo_mode = false; // in demo mode, answers to questions are not required and instruction test is always passed
 
 function answ_req() {
    var ans_required; 
@@ -132,8 +132,8 @@ var select = {
 		`
 		<p><b>Select a condition: type in a number between 1 and 4.</b></p>
     <p>
-      - 1 and 2: stable effect structure (1 = first cause is the left cause; 2 = first cause is the right cause)<br>
-      - 3 and 4: unstable effect structure (3 = first cause is the left cause; 4 = first cause is the right cause)
+      - 1 and 2: one-shot irreversible relation (1 = first cause is the left cause; 2 = first cause is the right cause)<br>
+      - 3 and 4: demarcating irreversible (3 = first cause is the left cause; 4 = first cause is the right cause)
     </p>
 		`, 
 		placeholder: 'number between 1 and 4',
